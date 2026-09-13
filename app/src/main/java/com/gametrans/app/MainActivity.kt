@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
     private var targetLanguage by mutableStateOf("id")
     private var autoStopOnExit by mutableStateOf(true)
     private var displayMode by mutableStateOf("inplace")
+    private var overlayOpacity by mutableStateOf(45)
 
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
         autoStopOnExit = prefs.getBoolean("auto_stop_on_exit", true)
         sourceLanguage = prefs.getString("source_lang", "ja") ?: "ja"
         displayMode = prefs.getString("display_mode", "inplace") ?: "inplace"
+        overlayOpacity = prefs.getInt("overlay_opacity", 45).coerceIn(0, 100)
 
         checkPermissions()
         isServiceRunning = FloatingBubbleService.isRunning
@@ -78,6 +80,7 @@ class MainActivity : ComponentActivity() {
                         sourceLang = sourceLanguage,
                         autoStopOnExit = autoStopOnExit,
                         displayMode = displayMode,
+                        overlayOpacity = overlayOpacity,
                         onSourceLangChange = {
                             sourceLanguage = it
                             getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
@@ -97,6 +100,13 @@ class MainActivity : ComponentActivity() {
                             getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
                                 .edit()
                                 .putString("display_mode", it)
+                                .apply()
+                        },
+                        onOverlayOpacityChange = {
+                            overlayOpacity = it
+                            getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
+                                .edit()
+                                .putInt("overlay_opacity", it)
                                 .apply()
                         },
                         onRequestOverlayPermission = { requestOverlayPermission() },
@@ -185,9 +195,11 @@ fun MainScreen(
     sourceLang: String,
     autoStopOnExit: Boolean,
     displayMode: String,
+    overlayOpacity: Int,
     onSourceLangChange: (String) -> Unit,
     onAutoStopChange: (Boolean) -> Unit,
     onDisplayModeChange: (String) -> Unit,
+    onOverlayOpacityChange: (Int) -> Unit,
     onRequestOverlayPermission: () -> Unit,
     onToggleService: () -> Unit
 ) {
@@ -243,7 +255,7 @@ fun MainScreen(
                                 .padding(horizontal = 5.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "v1.0.5",
+                                text = "v1.0.6",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = CyberSky
@@ -471,6 +483,67 @@ fun MainScreen(
                             label = { Text("Kotak", fontSize = 11.sp) }
                         )
                     }
+                }
+
+                // Transparansi Terjemahan ala Bubble Translate
+                if (displayMode == "inplace") {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = Color(0x1AFFFFFF))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Transparansi Latar", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextLight)
+                            Text(
+                                text = when {
+                                    overlayOpacity <= 0 -> "🪟 100% Transparan (Tanpa Kotak)"
+                                    overlayOpacity <= 55 -> "🌫️ Kaca Transparan ($overlayOpacity%)"
+                                    else -> "⬛ Kotak Gelap ($overlayOpacity%)"
+                                },
+                                fontSize = 11.sp,
+                                color = CyberSky
+                            )
+                        }
+                        Row {
+                            FilterChip(
+                                selected = overlayOpacity in 30..60,
+                                onClick = { onOverlayOpacityChange(45) },
+                                label = { Text("Kaca 45%", fontSize = 11.sp) }
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            FilterChip(
+                                selected = overlayOpacity <= 0,
+                                onClick = { onOverlayOpacityChange(0) },
+                                label = { Text("0%", fontSize = 11.sp) }
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            FilterChip(
+                                selected = overlayOpacity > 60,
+                                onClick = { onOverlayOpacityChange(85) },
+                                label = { Text("85%", fontSize = 11.sp) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Slider(
+                        value = overlayOpacity.toFloat(),
+                        onValueChange = { onOverlayOpacityChange(it.toInt()) },
+                        valueRange = 0f..100f,
+                        steps = 9,
+                        colors = SliderDefaults.colors(
+                            thumbColor = CyberSky,
+                            activeTrackColor = CyberBlue,
+                            inactiveTrackColor = Color(0x33FFFFFF)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(28.dp)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))

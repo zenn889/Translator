@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Sleek Top Floating Control Bar -->
+    <!-- Top Floating Control Bar (Hidden by default for clean transparent screen ala Bubble Translate) -->
     <LinearLayout
         android:id="@+id/overlayTopBar"
         android:layout_width="wrap_content"
@@ -20,6 +20,7 @@
         android:layout_marginTop="32dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:visibility="gone"
         android:background="@drawable/bg_overlay_top_bar"
         android:paddingStart="14dp"
         android:paddingEnd="10dp"

@@ -15,6 +15,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.speech.tts.TextToSpeech
@@ -527,6 +528,12 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
             }
 
             val density = resources.displayMetrics.density
+            val curMetrics = resources.displayMetrics
+            val curWidth = curMetrics.widthPixels
+            val curHeight = curMetrics.heightPixels
+
+            val prefs = getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
+            val overlayOpacity = prefs.getInt("overlay_opacity", 45).coerceIn(0, 100)
 
             for (pair in translatedBlocks) {
                 val block = pair.first
@@ -538,11 +545,25 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
 
                 val card = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
-                    background = ContextCompat.getDrawable(this@FloatingBubbleService, R.drawable.bg_overlay_card)
-                    val padH = (12 * density).toInt()
-                    val padV = (8 * density).toInt()
+                    if (overlayOpacity <= 0) {
+                        // 100% Fully Transparent - No background card (like Bubble Translate Video Subtitle mode)
+                        background = null
+                        elevation = 0f
+                    } else {
+                        // Translucent glass pill (like Bubble Translate Manga / Game mode)
+                        val alpha = (overlayOpacity * 255 / 100).coerceIn(0, 255)
+                        val bgColor = Color.argb(alpha, 15, 23, 42) // Slate dark glass with user's selected opacity
+                        val pillShape = GradientDrawable().apply {
+                            shape = GradientDrawable.RECTANGLE
+                            cornerRadius = 8 * density
+                            setColor(bgColor)
+                        }
+                        background = pillShape
+                        elevation = if (overlayOpacity > 20) 6 * density else 0f
+                    }
+                    val padH = (8 * density).toInt()
+                    val padV = (4 * density).toInt()
                     setPadding(padH, padV, padH, padV)
-                    elevation = 20 * density
                     setOnClickListener {
                         dismissInPlaceOverlay()
                     }
@@ -551,23 +572,33 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
                         val clip = ClipData.newPlainText("GameTrans", translated)
                         clipboard.setPrimaryClip(clip)
                         Toast.makeText(this@FloatingBubbleService, "Teks disalin: $translated", Toast.LENGTH_SHORT).show()
+                        try {
+                            tts?.speak(translated, TextToSpeech.QUEUE_FLUSH, null, "GameTransTTS")
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                         true
                     }
                 }
 
-                // Available width on screen
-                val marginStart = (rect.left - (6 * density).toInt()).coerceIn(12, screenWidth - 120)
-                val maxAllowedWidth = (screenWidth - marginStart - 16).coerceAtLeast((120 * density).toInt())
-                val targetMinWidth = Math.min(rect.width() + (16 * density).toInt(), maxAllowedWidth)
+                // Available width on screen (dynamically adapted for portrait and landscape)
+                val marginStart = (rect.left - (4 * density).toInt()).coerceIn(8, curWidth - 80)
+                val maxAllowedWidth = (curWidth - marginStart - 12).coerceAtLeast((100 * density).toInt())
+                val targetMinWidth = Math.min(rect.width() + (8 * density).toInt(), maxAllowedWidth)
 
                 val tv = TextView(this).apply {
                     text = translated
-                    setTextColor(Color.parseColor("#FDE047")) // High contrast gaming yellow
+                    if (overlayOpacity <= 0) {
+                        setTextColor(Color.parseColor("#FDE047")) // Bright yellow for zero-bg mode
+                        setShadowLayer(8f, 0f, 2f, Color.BLACK)
+                    } else {
+                        setTextColor(Color.WHITE) // Crisp pure white like Bubble Translate
+                        setShadowLayer(6f, 0f, 2f, Color.BLACK)
+                    }
                     setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD))
-                    setShadowLayer(4f, 0f, 2f, Color.BLACK)
                     gravity = if (isWideDialogue) Gravity.START or Gravity.CENTER_VERTICAL else Gravity.CENTER
-                    maxWidth = maxAllowedWidth - (24 * density).toInt()
-                    setLineSpacing(3f * density, 1.1f)
+                    maxWidth = maxAllowedWidth - (16 * density).toInt()
+                    setLineSpacing(2.5f * density, 1.15f)
 
                     val heightDp = rect.height() / density
                     textSize = when {
@@ -580,9 +611,9 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
                 card.addView(tv)
 
                 card.minimumWidth = targetMinWidth
-                card.minimumHeight = rect.height().coerceAtLeast((26 * density).toInt())
+                card.minimumHeight = rect.height().coerceAtLeast((22 * density).toInt())
 
-                val marginTop = (rect.top - (4 * density).toInt()).coerceIn(12, screenHeight - 60)
+                val marginTop = (rect.top - (2 * density).toInt()).coerceIn(8, curHeight - 40)
 
                 val lp = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.WRAP_CONTENT,

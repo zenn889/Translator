@@ -29,9 +29,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,7 +46,6 @@ class MainActivity : ComponentActivity() {
     private var autoStopOnExit by mutableStateOf(true)
     private var displayMode by mutableStateOf("inplace")
 
-    // Launcher for MediaProjection Screen Capture Intent
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -79,7 +76,6 @@ class MainActivity : ComponentActivity() {
                         isServiceRunning = isServiceRunning,
                         hasOverlayPermission = hasOverlayPermission,
                         sourceLang = sourceLanguage,
-                        targetLang = targetLanguage,
                         autoStopOnExit = autoStopOnExit,
                         displayMode = displayMode,
                         onSourceLangChange = {
@@ -119,7 +115,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // If autoStopOnExit is enabled, cleanly stop floating service when activity finishes
         val prefs = getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
         val stopOnExit = prefs.getBoolean("auto_stop_on_exit", true)
         if (isFinishing && stopOnExit) {
@@ -169,7 +164,7 @@ class MainActivity : ComponentActivity() {
 
         ContextCompat.startForegroundService(this, serviceIntent)
         isServiceRunning = true
-        Toast.makeText(this, "Gelembung melayang aktif! Silakan buka game Anda.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Gelembung aktif! Silakan buka game Anda.", Toast.LENGTH_SHORT).show()
     }
 
     private fun stopFloatingService() {
@@ -180,7 +175,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-data class LangItem(val code: String, val flag: String, val name: String, val nativeName: String)
+data class LangItem(val code: String, val flag: String, val name: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -188,7 +183,6 @@ fun MainScreen(
     isServiceRunning: Boolean,
     hasOverlayPermission: Boolean,
     sourceLang: String,
-    targetLang: String,
     autoStopOnExit: Boolean,
     displayMode: String,
     onSourceLangChange: (String) -> Unit,
@@ -198,20 +192,20 @@ fun MainScreen(
     onToggleService: () -> Unit
 ) {
     val languages = listOf(
-        LangItem("ja", "🇯🇵", "Jepang", "日本語"),
-        LangItem("en", "🇺🇸", "Inggris", "English"),
-        LangItem("zh", "🇨🇳", "Mandarin", "简体中文"),
-        LangItem("ko", "🇰🇷", "Korea", "한국어")
+        LangItem("ja", "🇯🇵", "Jepang"),
+        LangItem("en", "🇺🇸", "Inggris"),
+        LangItem("zh", "🇨🇳", "Mandarin"),
+        LangItem("ko", "🇰🇷", "Korea")
     )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(horizontal = 20.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // App Header Section
+        // Simple Clean Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -220,41 +214,36 @@ fun MainScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(Color(0xFF0EA5E9), Color(0xFF6366F1))
-                            )
-                        ),
+                        .background(CyberBlue),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Translate,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "GameTrans",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(RoundedCornerShape(4.dp))
                                 .background(Color(0xFF1E293B))
-                                .border(1.dp, Color(0xFF38BDF8), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .padding(horizontal = 5.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "v1.0.4",
+                                text = "v1.0.5",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = CyberSky
@@ -262,7 +251,7 @@ fun MainScreen(
                         }
                     }
                     Text(
-                        text = "Realtime In-Game Subtitle Screen Translator",
+                        text = "Penerjemah Layar Game Realtime",
                         fontSize = 11.sp,
                         color = TextMuted
                     )
@@ -270,310 +259,124 @@ fun MainScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Service Status Indicator Card
-        val statusBgColor by animateColorAsState(
-            targetValue = if (isServiceRunning) Color(0xFF064E3B) else Color(0xFF1E293B),
-            animationSpec = tween(300),
-            label = "statusBg"
-        )
-        val statusBorderColor by animateColorAsState(
-            targetValue = if (isServiceRunning) Color(0xFF10B981) else Color(0xFF334155),
-            animationSpec = tween(300),
-            label = "statusBorder"
-        )
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = statusBgColor),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.2.dp, statusBorderColor, RoundedCornerShape(16.dp))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(14.dp)
-                            .clip(CircleShape)
-                            .background(if (isServiceRunning) Color(0xFF34D399) else Color(0xFF64748B))
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = if (isServiceRunning) "STATUS: GELEMBUNG AKTIF" else "STATUS: NONAKTIF",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isServiceRunning) Color(0xFFA7F3D0) else Color(0xFFCBD5E1)
-                        )
-                        Text(
-                            text = if (isServiceRunning) "Gelembung siap ditekan di atas game" else "Gelembung belum dimunculkan",
-                            fontSize = 11.sp,
-                            color = if (isServiceRunning) Color(0xFF6EE7B7) else Color(0xFF94A3B8)
-                        )
-                    }
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(18.dp))
 
-        // Permission Card (If overlay not granted)
+        // Overlay Permission Warning (Only if not granted)
         if (!hasOverlayPermission) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF450A0A)),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Color(0xFFEF4444), RoundedCornerShape(16.dp))
+                    .clickable { onRequestOverlayPermission() }
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFF87171))
-                        Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFF87171))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "IZIN OVERLAY DIBUTUHKAN",
+                            text = "Izin Menampilkan di Atas Layar Belum Aktif",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             color = Color(0xFFFCA5A5)
                         )
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Izin 'Tampilkan di atas aplikasi lain' diperlukan agar tombol gelembung melayang dapat muncul di atas game Anda.",
-                        fontSize = 12.sp,
-                        color = Color(0xFFE2E8F0)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = onRequestOverlayPermission,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("Buka Pengaturan Izin", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "Ketuk untuk mengaktifkan izin agar gelembung bisa muncul.",
+                            fontSize = 11.sp,
+                            color = Color(0xFFE2E8F0)
+                        )
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(14.dp))
         }
 
-        // Primary Action Start / Stop Button
-        val buttonGradient = if (isServiceRunning) {
-            Brush.horizontalGradient(listOf(Color(0xFFDC2626), Color(0xFF991B1B)))
-        } else {
-            Brush.horizontalGradient(listOf(Color(0xFF059669), Color(0xFF0284C7)))
-        }
+        // Hero Service Card with Start / Stop Button
+        val statusBg by animateColorAsState(
+            targetValue = if (isServiceRunning) Color(0xFF064E3B) else DarkSurface,
+            animationSpec = tween(300),
+            label = "bg"
+        )
+        val statusBorder by animateColorAsState(
+            targetValue = if (isServiceRunning) Color(0xFF10B981) else Color(0x3338BDF8),
+            animationSpec = tween(300),
+            label = "border"
+        )
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(58.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(buttonGradient)
-                .clickable { onToggleService() },
-            contentAlignment = Alignment.Center
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = if (isServiceRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = if (isServiceRunning) "HENTIKAN LAYANAN TRANSLATE" else "MULAI LAYANAN TRANSLATE",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                    letterSpacing = 0.5.sp
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Language Selection Card
         Card(
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = statusBg),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0x2E38BDF8), RoundedCornerShape(18.dp))
+                .border(1.dp, statusBorder, RoundedCornerShape(16.dp))
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                Text(
-                    text = "PILIHAN BAHASA GAME",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = CyberSky,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = "Bahasa Asal Game (Source):",
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Source Language Grid (2x2)
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        languages.take(2).forEach { item ->
-                            val isSelected = sourceLang == item.code
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) Color(0xFF0369A1) else DarkSurfaceVariant)
-                                    .border(
-                                        width = if (isSelected) 1.5.dp else 1.dp,
-                                        color = if (isSelected) CyberSky else Color(0x22FFFFFF),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable { onSourceLangChange(item.code) }
-                                    .padding(vertical = 10.dp, horizontal = 12.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(item.flag, fontSize = 20.sp)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            text = item.name,
-                                            fontSize = 13.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isSelected) Color.White else Color(0xFFCBD5E1)
-                                        )
-                                        Text(
-                                            text = item.nativeName,
-                                            fontSize = 10.sp,
-                                            color = if (isSelected) Color(0xFFBAE6FD) else TextMuted
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        languages.drop(2).forEach { item ->
-                            val isSelected = sourceLang == item.code
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) Color(0xFF0369A1) else DarkSurfaceVariant)
-                                    .border(
-                                        width = if (isSelected) 1.5.dp else 1.dp,
-                                        color = if (isSelected) CyberSky else Color(0x22FFFFFF),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable { onSourceLangChange(item.code) }
-                                    .padding(vertical = 10.dp, horizontal = 12.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(item.flag, fontSize = 20.sp)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            text = item.name,
-                                            fontSize = 13.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isSelected) Color.White else Color(0xFFCBD5E1)
-                                        )
-                                        Text(
-                                            text = item.nativeName,
-                                            fontSize = 10.sp,
-                                            color = if (isSelected) Color(0xFFBAE6FD) else TextMuted
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(if (isServiceRunning) Color(0xFF34D399) else Color(0xFF64748B))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isServiceRunning) "LAYANAN MELAYANG AKTIF" else "LAYANAN NONAKTIF",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isServiceRunning) Color(0xFFA7F3D0) else Color(0xFFCBD5E1)
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Target Language Box
-                Text(
-                    text = "Diterjemahkan Ke (Target):",
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Box(
+                // Action Button
+                val buttonColor = if (isServiceRunning) Color(0xFFDC2626) else Color(0xFF059669)
+                Button(
+                    onClick = onToggleService,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DarkSurfaceVariant)
-                        .border(1.dp, Color(0x2610B981), RoundedCornerShape(12.dp))
-                        .padding(14.dp)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("🇮🇩", fontSize = 22.sp)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Bahasa Indonesia",
-                                color = TextLight,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = "Terjemahan offline/online realtime berkecepatan tinggi",
-                                color = EmeraldGreen,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
+                    Icon(
+                        imageVector = if (isServiceRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isServiceRunning) "HENTIKAN GELEMBUNG" else "MUNCULKAN GELEMBUNG",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Settings / Lifecycle Control Card (Addresses user request for auto stop on exit)
+        // Language Setting (Simple Horizontal Row)
         Card(
             colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            shape = RoundedCornerShape(18.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, Color(0x2E38BDF8), RoundedCornerShape(18.dp))
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    text = "PENGATURAN SISTEM",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = CyberSky,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Display Mode Options (Nimpa Layar vs Kotak HUD)
-                Text(
-                    text = "Gaya Tampilan Terjemahan:",
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    fontWeight = FontWeight.Medium
+                    text = "BAHASA ASAL GAME:",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = CyberSky
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -581,185 +384,139 @@ fun MainScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val isInPlace = displayMode == "inplace"
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isInPlace) Color(0xFF0369A1) else DarkSurfaceVariant)
-                            .border(
-                                width = if (isInPlace) 1.5.dp else 1.dp,
-                                color = if (isInPlace) CyberSky else Color(0x22FFFFFF),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .clickable { onDisplayModeChange("inplace") }
-                            .padding(12.dp)
-                    ) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("🖼️", fontSize = 16.sp)
-                                Spacer(modifier = Modifier.width(6.dp))
+                    languages.forEach { item ->
+                        val isSelected = sourceLang == item.code
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) CyberBlue else DarkSurfaceVariant)
+                                .clickable { onSourceLangChange(item.code) }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(item.flag, fontSize = 16.sp)
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Nimpa Layar",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isInPlace) Color.White else Color(0xFFCBD5E1)
+                                    text = item.name,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) Color.White else TextMuted
                                 )
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Menimpa langsung di atas teks dialog game",
-                                fontSize = 10.5.sp,
-                                color = if (isInPlace) Color(0xFFBAE6FD) else TextMuted
-                            )
-                        }
-                    }
-
-                    val isSubtitle = displayMode == "subtitle"
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSubtitle) Color(0xFF0369A1) else DarkSurfaceVariant)
-                            .border(
-                                width = if (isSubtitle) 1.5.dp else 1.dp,
-                                color = if (isSubtitle) CyberSky else Color(0x22FFFFFF),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .clickable { onDisplayModeChange("subtitle") }
-                            .padding(12.dp)
-                    ) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("📋", fontSize = 16.sp)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Kotak HUD",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSubtitle) Color.White else Color(0xFFCBD5E1)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Kotak subtitle mengambang di bawah layar",
-                                fontSize = 10.5.sp,
-                                color = if (isSubtitle) Color(0xFFBAE6FD) else TextMuted
-                            )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = Color(0x1A38BDF8))
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(DarkSurfaceVariant)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🇮🇩", fontSize = 16.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Diterjemahkan ke: ", fontSize = 12.sp, color = TextMuted)
+                    Text("Bahasa Indonesia", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextLight)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Simple Settings (2 Clean Toggles)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = "PENGATURAN TAMPILAN & SISTEM:",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = CyberSky
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Mode Selector: Nimpa Layar vs Kotak Subtitle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
+                        Text("Gaya Terjemahan", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextLight)
                         Text(
-                            text = "Tutup Layanan Saat Aplikasi Keluar",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = TextLight
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Otomatis hentikan gelembung jika GameTrans ditutup dari Recent Apps / tombol kembali.",
+                            text = if (displayMode == "inplace") "🖼️ Nimpa Transparan di Layar" else "📋 Kotak Subtitle di Bawah",
                             fontSize = 11.sp,
-                            color = TextMuted
+                            color = CyberSky
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Row {
+                        FilterChip(
+                            selected = displayMode == "inplace",
+                            onClick = { onDisplayModeChange("inplace") },
+                            label = { Text("Nimpa", fontSize = 11.sp) }
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        FilterChip(
+                            selected = displayMode == "subtitle",
+                            onClick = { onDisplayModeChange("subtitle") },
+                            label = { Text("Kotak", fontSize = 11.sp) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = Color(0x1AFFFFFF))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Auto stop switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Tutup Saat Aplikasi Keluar", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextLight)
+                        Text("Gelembung otomatis berhenti saat GameTrans ditutup.", fontSize = 11.sp, color = TextMuted)
+                    }
                     Switch(
                         checked = autoStopOnExit,
                         onCheckedChange = onAutoStopChange,
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = CyberBlue,
-                            uncheckedThumbColor = Color(0xFF94A3B8),
-                            uncheckedTrackColor = Color(0xFF334155)
+                            checkedTrackColor = CyberBlue
                         )
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Step-by-step Game Guide
-        Card(
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            shape = RoundedCornerShape(18.dp),
-            modifier = Modifier.fillMaxWidth()
+        // Simple Tip Box
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(DarkSurfaceVariant)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.SportsEsports, contentDescription = null, tint = SubtitleYellow)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "FITUR & CARA PAKAI DI DALAM GAME",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = SubtitleYellow
-                    )
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-
-                GuideItem(
-                    icon = "🎯",
-                    title = "Nimpa Teks Game Langsung",
-                    desc = "Ketuk gelembung 1x ➔ Teks terjemahan langsung menimpa kotak dialog game di layar!"
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                GuideItem(
-                    icon = "👆",
-                    title = "Tutup Terjemahan",
-                    desc = "Cukup ketuk layar di mana saja untuk menghilangkan teks terjemahan dan lanjut bermain."
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                GuideItem(
-                    icon = "✋",
-                    title = "Geser Bebas & Snap",
-                    desc = "Gelembung bisa digeser ke mana saja dan otomatis menempel di tepi layar."
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                GuideItem(
-                    icon = "🗑️",
-                    title = "Tutup Cepat (Drag-to-Delete)",
-                    desc = "Tarik gelembung ke ikon sampah merah di bawah layar untuk menutup layanan."
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                GuideItem(
-                    icon = "🔊",
-                    title = "Fitur Suara & Salin",
-                    desc = "Tersedia tombol suara (TTS) Bahasa Indonesia dan sentuh-tahan teks untuk menyalin."
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Footer
-        Text(
-            text = "GameTrans Android • Dibuat khusus untuk gamer Indonesia",
-            fontSize = 11.sp,
-            color = TextMuted
-        )
-    }
-}
-
-@Composable
-fun GuideItem(icon: String, title: String, desc: String) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Text(text = icon, fontSize = 16.sp)
-        Spacer(modifier = Modifier.width(10.dp))
-        Column {
-            Text(text = title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextLight)
-            Text(text = desc, fontSize = 11.sp, color = TextMuted)
+            Text("💡", fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Buka game, ketuk gelembung 1x saat ada dialog. Ketuk layar di mana saja untuk menutup terjemahan.",
+                fontSize = 11.sp,
+                color = TextMuted
+            )
         }
     }
 }

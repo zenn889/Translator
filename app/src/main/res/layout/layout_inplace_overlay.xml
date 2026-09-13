@@ -3,7 +3,7 @@
     android:id="@+id/overlayRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#20000000">
+    android:background="@android:color/transparent">
 
     <!-- Container where dynamic text overlay cards are placed -->
     <FrameLayout

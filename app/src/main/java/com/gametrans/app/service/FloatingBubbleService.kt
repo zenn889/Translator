@@ -534,13 +534,15 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
                 val rect = block.boundingBox ?: continue
                 if (translated.isBlank()) continue
 
+                val isWideDialogue = (rect.width() / density) > 170
+
                 val card = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     background = ContextCompat.getDrawable(this@FloatingBubbleService, R.drawable.bg_overlay_card)
-                    val padH = (6 * density).toInt()
-                    val padV = (4 * density).toInt()
+                    val padH = (12 * density).toInt()
+                    val padV = (8 * density).toInt()
                     setPadding(padH, padV, padH, padV)
-                    elevation = 16 * density
+                    elevation = 20 * density
                     setOnClickListener {
                         dismissInPlaceOverlay()
                     }
@@ -553,35 +555,41 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
                     }
                 }
 
+                // Available width on screen
+                val marginStart = (rect.left - (6 * density).toInt()).coerceIn(12, screenWidth - 120)
+                val maxAllowedWidth = (screenWidth - marginStart - 16).coerceAtLeast((120 * density).toInt())
+                val targetMinWidth = Math.min(rect.width() + (16 * density).toInt(), maxAllowedWidth)
+
                 val tv = TextView(this).apply {
                     text = translated
                     setTextColor(Color.parseColor("#FDE047")) // High contrast gaming yellow
-                    setTypeface(Typeface.DEFAULT_BOLD)
+                    setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD))
                     setShadowLayer(4f, 0f, 2f, Color.BLACK)
-                    gravity = Gravity.CENTER
+                    gravity = if (isWideDialogue) Gravity.START or Gravity.CENTER_VERTICAL else Gravity.CENTER
+                    maxWidth = maxAllowedWidth - (24 * density).toInt()
+                    setLineSpacing(3f * density, 1.1f)
 
                     val heightDp = rect.height() / density
                     textSize = when {
-                        heightDp >= 55 -> 16f
-                        heightDp >= 35 -> 14f
-                        heightDp >= 22 -> 12f
-                        else -> 10.5f
+                        heightDp >= 65 -> 15.5f
+                        heightDp >= 42 -> 14f
+                        heightDp >= 26 -> 13f
+                        else -> 11.5f
                     }
                 }
                 card.addView(tv)
 
-                // Minimum dimensions to cover the original foreign text completely
-                val minW = rect.width().coerceAtLeast((60 * density).toInt())
-                val minH = rect.height().coerceAtLeast((22 * density).toInt())
-                card.minimumWidth = minW
-                card.minimumHeight = minH
+                card.minimumWidth = targetMinWidth
+                card.minimumHeight = rect.height().coerceAtLeast((26 * density).toInt())
+
+                val marginTop = (rect.top - (4 * density).toInt()).coerceIn(12, screenHeight - 60)
 
                 val lp = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.WRAP_CONTENT,
                     FrameLayout.LayoutParams.WRAP_CONTENT
                 ).apply {
-                    leftMargin = rect.left.coerceIn(8, (screenWidth - 100).coerceAtLeast(8))
-                    topMargin = rect.top.coerceIn(8, (screenHeight - 60).coerceAtLeast(8))
+                    leftMargin = marginStart
+                    topMargin = marginTop
                 }
 
                 cardsContainer?.addView(card, lp)

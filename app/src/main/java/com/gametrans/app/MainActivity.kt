@@ -254,7 +254,7 @@ fun MainScreen(
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "v1.0.3",
+                                text = "v1.0.4",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = CyberSky

@@ -79,12 +79,28 @@ class TranslationManager(context: Context) {
         }
 
         // 4. If all fail, return original
-        val finalResult = translated?.let { unmaskTags(it, tags) } ?: trimmed
+        var finalResult = translated?.let { unmaskTags(it, tags) } ?: trimmed
+        if (targetLang == "id") {
+            finalResult = postProcessIndonesianText(finalResult)
+        }
 
         // Save to cache
         cache.put(trimmed, sourceLang, targetLang, finalResult)
 
         return@withContext finalResult
+    }
+
+    private fun postProcessIndonesianText(text: String): String {
+        var res = text.trim()
+        // Fix space before punctuation: "Halo , apa kabar ?" -> "Halo, apa kabar?"
+        res = res.replace(Regex("""\s+([,.:;!?])"""), "$1")
+        // Fix missing space after punctuation: "Halo,apa" -> "Halo, apa"
+        res = res.replace(Regex("""([,.:;!?])([A-Za-z0-9])"""), "$1 $2")
+        // Capitalize first letter
+        if (res.isNotEmpty() && res[0].isLowerCase()) {
+            res = res.replaceFirstChar { it.uppercaseChar() }
+        }
+        return res
     }
 
     private fun maskTags(input: String): Pair<String, List<String>> {
@@ -120,7 +136,7 @@ class TranslationManager(context: Context) {
 
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", "Mozilla/5.0 (Linux; Android)")
+                .header("User-Agent", "Mozilla/5.0 (Linux; Android 14)")
                 .build()
 
             val response = httpClient.newCall(request).execute()
@@ -134,10 +150,17 @@ class TranslationManager(context: Context) {
             for (element in sentences) {
                 val sentence = element.asJsonArray
                 if (sentence.size() > 0 && !sentence.get(0).isJsonNull) {
-                    sb.append(sentence.get(0).asString)
+                    val segment = sentence.get(0).asString
+                    if (segment.isNotBlank()) {
+                        if (sb.isNotEmpty() && !sb.endsWith(" ") && !segment.startsWith(" ")) {
+                            sb.append(" ")
+                        }
+                        sb.append(segment.trim())
+                    }
                 }
             }
-            sb.toString()
+            val res = sb.toString().trim()
+            if (res.isNotBlank()) res else null
         } catch (e: Exception) {
             null
         }

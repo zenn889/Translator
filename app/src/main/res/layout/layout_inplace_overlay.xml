@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/overlayRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#20000000">
+
+    <!-- Container where dynamic text overlay cards are placed -->
+    <FrameLayout
+        android:id="@+id/overlayCardsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Sleek Top Floating Control Bar -->
+    <LinearLayout
+        android:id="@+id/overlayTopBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="32dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_overlay_top_bar"
+        android:paddingStart="14dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:elevation="20dp">
+
+        <TextView
+            android:id="@+id/tvOverlayLang"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="JA ➔ ID"
+            android:textColor="#38bdf8"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="14dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:background="#3338bdf8" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ketuk layar untuk menutup"
+            android:textColor="#94a3b8"
+            android:textSize="11sp" />
+
+        <ImageButton
+            android:id="@+id/btnOverlayTts"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="8dp"
+            android:padding="6dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_speaker"
+            android:contentDescription="Suara" />
+
+        <ImageButton
+            android:id="@+id/btnSwitchToSubtitle"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="6dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_translate_bubble"
+            android:contentDescription="Tampilkan Subtitle" />
+
+        <ImageButton
+            android:id="@+id/btnCloseOverlay"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="6dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_close"
+            android:contentDescription="Tutup" />
+
+    </LinearLayout>
+
+</FrameLayout>

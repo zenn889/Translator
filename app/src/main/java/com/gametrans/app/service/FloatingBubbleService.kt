@@ -12,7 +12,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.os.Build
 import android.os.IBinder
 import android.speech.tts.TextToSpeech
@@ -23,15 +25,19 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.gametrans.app.MainActivity
 import com.gametrans.app.R
 import com.gametrans.app.ocr.GameOcrManager
+import com.gametrans.app.ocr.GameTextBlock
 import com.gametrans.app.translation.TranslationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,10 +56,12 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
     private var bubbleView: View? = null
     private var dialogView: View? = null
     private var removeTargetView: View? = null
+    private var inPlaceOverlayView: View? = null
 
     private lateinit var bubbleParams: WindowManager.LayoutParams
     private lateinit var dialogParams: WindowManager.LayoutParams
     private lateinit var removeTargetParams: WindowManager.LayoutParams
+    private lateinit var inPlaceOverlayParams: WindowManager.LayoutParams
 
     // Screen Dimensions
     private var screenWidth = 1080
@@ -386,8 +394,10 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
 
         serviceScope.launch {
             try {
-                // 1. Hide bubble briefly to avoid capturing it in screenshot
+                // 1. Hide bubble and previous overlays briefly to avoid capturing in screenshot
                 bubbleView?.visibility = View.INVISIBLE
+                dismissInPlaceOverlay()
+                dismissTranslationDialog()
                 delay(80)
 
                 // 2. Capture screen bitmap
@@ -405,25 +415,38 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
 
                 // 4. Run OCR
                 val ocrResult = ocrManager.recognizeText(bitmap, sourceLang)
-                if (ocrResult.fullText.isBlank()) {
+                if (ocrResult.fullText.isBlank() || ocrResult.blocks.isEmpty()) {
                     Toast.makeText(this@FloatingBubbleService, getString(R.string.no_text_found), Toast.LENGTH_SHORT).show()
                     isTranslating = false
                     setBubbleLoading(false)
                     return@launch
                 }
 
-                // 5. Show Dialog loading state
-                showTranslationDialog(ocrResult.fullText, getString(R.string.translating))
+                val prefs = getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
+                val displayMode = prefs.getString("display_mode", "inplace") ?: "inplace"
 
-                // 6. Translate text to Indonesian
-                val translated = translationManager.translate(
-                    text = ocrResult.fullText,
-                    sourceLang = sourceLang,
-                    targetLang = targetLang
-                )
-
-                // 7. Update dialog with translated result
-                showTranslationDialog(ocrResult.fullText, translated)
+                if (displayMode == "subtitle") {
+                    showTranslationDialog(ocrResult.fullText, getString(R.string.translating))
+                    val translated = translationManager.translate(
+                        text = ocrResult.fullText,
+                        sourceLang = sourceLang,
+                        targetLang = targetLang
+                    )
+                    showTranslationDialog(ocrResult.fullText, translated)
+                } else {
+                    // In-Place Mode: Nimpa teks asli langsung di atas layar game!
+                    val translatedBlocks = translationManager.translateBlocks(
+                        blocks = ocrResult.blocks,
+                        sourceLang = sourceLang,
+                        targetLang = targetLang
+                    )
+                    val fullTranslated = translatedBlocks.joinToString("\n") { it.second }
+                    showInPlaceOverlay(
+                        translatedBlocks = translatedBlocks,
+                        fullOriginalText = ocrResult.fullText,
+                        fullTranslatedText = fullTranslated
+                    )
+                }
 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -432,6 +455,155 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
                 isTranslating = false
                 setBubbleLoading(false)
             }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun showInPlaceOverlay(
+        translatedBlocks: List<Pair<GameTextBlock, String>>,
+        fullOriginalText: String,
+        fullTranslatedText: String
+    ) {
+        dismissInPlaceOverlay()
+        dismissTranslationDialog()
+
+        try {
+            inPlaceOverlayView = LayoutInflater.from(this).inflate(R.layout.layout_inplace_overlay, null)
+
+            val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
+            }
+
+            inPlaceOverlayParams = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                layoutFlag,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            }
+
+            val overlayRoot = inPlaceOverlayView?.findViewById<FrameLayout>(R.id.overlayRoot)
+            val cardsContainer = inPlaceOverlayView?.findViewById<FrameLayout>(R.id.overlayCardsContainer)
+            val tvLang = inPlaceOverlayView?.findViewById<TextView>(R.id.tvOverlayLang)
+            val btnTts = inPlaceOverlayView?.findViewById<ImageButton>(R.id.btnOverlayTts)
+            val btnSwitch = inPlaceOverlayView?.findViewById<ImageButton>(R.id.btnSwitchToSubtitle)
+            val btnClose = inPlaceOverlayView?.findViewById<ImageButton>(R.id.btnCloseOverlay)
+
+            tvLang?.text = "${sourceLang.uppercase()} ➔ ${targetLang.uppercase()}"
+
+            // Tapping background closes the overlay so the gamer can resume playing immediately
+            overlayRoot?.setOnClickListener {
+                dismissInPlaceOverlay()
+            }
+
+            btnSwitch?.setOnClickListener {
+                dismissInPlaceOverlay()
+                showTranslationDialog(fullOriginalText, fullTranslatedText)
+            }
+
+            btnClose?.setOnClickListener {
+                dismissInPlaceOverlay()
+            }
+
+            btnTts?.setOnClickListener {
+                val toSpeak = fullTranslatedText.ifBlank {
+                    translatedBlocks.joinToString(". ") { it.second }
+                }
+                if (toSpeak.isNotBlank()) {
+                    try {
+                        tts?.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null, "GameTransTTS")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+
+            val density = resources.displayMetrics.density
+
+            for (pair in translatedBlocks) {
+                val block = pair.first
+                val translated = pair.second
+                val rect = block.boundingBox ?: continue
+                if (translated.isBlank()) continue
+
+                val card = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    background = ContextCompat.getDrawable(this@FloatingBubbleService, R.drawable.bg_overlay_card)
+                    val padH = (6 * density).toInt()
+                    val padV = (4 * density).toInt()
+                    setPadding(padH, padV, padH, padV)
+                    elevation = 16 * density
+                    setOnClickListener {
+                        dismissInPlaceOverlay()
+                    }
+                    setOnLongClickListener {
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("GameTrans", translated)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(this@FloatingBubbleService, "Teks disalin: $translated", Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                }
+
+                val tv = TextView(this).apply {
+                    text = translated
+                    setTextColor(Color.parseColor("#FDE047")) // High contrast gaming yellow
+                    setTypeface(Typeface.DEFAULT_BOLD)
+                    setShadowLayer(4f, 0f, 2f, Color.BLACK)
+                    gravity = Gravity.CENTER
+
+                    val heightDp = rect.height() / density
+                    textSize = when {
+                        heightDp >= 55 -> 16f
+                        heightDp >= 35 -> 14f
+                        heightDp >= 22 -> 12f
+                        else -> 10.5f
+                    }
+                }
+                card.addView(tv)
+
+                // Minimum dimensions to cover the original foreign text completely
+                val minW = rect.width().coerceAtLeast((60 * density).toInt())
+                val minH = rect.height().coerceAtLeast((22 * density).toInt())
+                card.minimumWidth = minW
+                card.minimumHeight = minH
+
+                val lp = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    leftMargin = rect.left.coerceIn(8, (screenWidth - 100).coerceAtLeast(8))
+                    topMargin = rect.top.coerceIn(8, (screenHeight - 60).coerceAtLeast(8))
+                }
+
+                cardsContainer?.addView(card, lp)
+            }
+
+            windowManager.addView(inPlaceOverlayView, inPlaceOverlayParams)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            showTranslationDialog(fullOriginalText, fullTranslatedText)
+        }
+    }
+
+    private fun dismissInPlaceOverlay() {
+        try {
+            if (inPlaceOverlayView != null && inPlaceOverlayView?.isAttachedToWindow == true) {
+                windowManager.removeView(inPlaceOverlayView)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            inPlaceOverlayView = null
         }
     }
 
@@ -577,6 +749,7 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
         super.onDestroy()
         isRunning = false
         serviceScope.cancel()
+        dismissInPlaceOverlay()
         dismissTranslationDialog()
 
         try {

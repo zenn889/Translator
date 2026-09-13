@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
     private var sourceLanguage by mutableStateOf("ja")
     private var targetLanguage by mutableStateOf("id")
     private var autoStopOnExit by mutableStateOf(true)
+    private var displayMode by mutableStateOf("inplace")
 
     // Launcher for MediaProjection Screen Capture Intent
     private val screenCaptureLauncher = registerForActivityResult(
@@ -63,6 +64,7 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
         autoStopOnExit = prefs.getBoolean("auto_stop_on_exit", true)
         sourceLanguage = prefs.getString("source_lang", "ja") ?: "ja"
+        displayMode = prefs.getString("display_mode", "inplace") ?: "inplace"
 
         checkPermissions()
         isServiceRunning = FloatingBubbleService.isRunning
@@ -79,6 +81,7 @@ class MainActivity : ComponentActivity() {
                         sourceLang = sourceLanguage,
                         targetLang = targetLanguage,
                         autoStopOnExit = autoStopOnExit,
+                        displayMode = displayMode,
                         onSourceLangChange = {
                             sourceLanguage = it
                             getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
@@ -91,6 +94,13 @@ class MainActivity : ComponentActivity() {
                             getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
                                 .edit()
                                 .putBoolean("auto_stop_on_exit", it)
+                                .apply()
+                        },
+                        onDisplayModeChange = {
+                            displayMode = it
+                            getSharedPreferences("gametrans_prefs", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("display_mode", it)
                                 .apply()
                         },
                         onRequestOverlayPermission = { requestOverlayPermission() },
@@ -180,8 +190,10 @@ fun MainScreen(
     sourceLang: String,
     targetLang: String,
     autoStopOnExit: Boolean,
+    displayMode: String,
     onSourceLangChange: (String) -> Unit,
     onAutoStopChange: (Boolean) -> Unit,
+    onDisplayModeChange: (String) -> Unit,
     onRequestOverlayPermission: () -> Unit,
     onToggleService: () -> Unit
 ) {
@@ -242,7 +254,7 @@ fun MainScreen(
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "v1.0.2",
+                                text = "v1.0.3",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = CyberSky
@@ -556,6 +568,92 @@ fun MainScreen(
                 )
                 Spacer(modifier = Modifier.height(14.dp))
 
+                // Display Mode Options (Nimpa Layar vs Kotak HUD)
+                Text(
+                    text = "Gaya Tampilan Terjemahan:",
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val isInPlace = displayMode == "inplace"
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isInPlace) Color(0xFF0369A1) else DarkSurfaceVariant)
+                            .border(
+                                width = if (isInPlace) 1.5.dp else 1.dp,
+                                color = if (isInPlace) CyberSky else Color(0x22FFFFFF),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .clickable { onDisplayModeChange("inplace") }
+                            .padding(12.dp)
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("🖼️", fontSize = 16.sp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Nimpa Layar",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isInPlace) Color.White else Color(0xFFCBD5E1)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Menimpa langsung di atas teks dialog game",
+                                fontSize = 10.5.sp,
+                                color = if (isInPlace) Color(0xFFBAE6FD) else TextMuted
+                            )
+                        }
+                    }
+
+                    val isSubtitle = displayMode == "subtitle"
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSubtitle) Color(0xFF0369A1) else DarkSurfaceVariant)
+                            .border(
+                                width = if (isSubtitle) 1.5.dp else 1.dp,
+                                color = if (isSubtitle) CyberSky else Color(0x22FFFFFF),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .clickable { onDisplayModeChange("subtitle") }
+                            .padding(12.dp)
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("📋", fontSize = 16.sp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Kotak HUD",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSubtitle) Color.White else Color(0xFFCBD5E1)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Kotak subtitle mengambang di bawah layar",
+                                fontSize = 10.5.sp,
+                                color = if (isSubtitle) Color(0xFFBAE6FD) else TextMuted
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = Color(0x1A38BDF8))
+                Spacer(modifier = Modifier.height(14.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -613,8 +711,14 @@ fun MainScreen(
 
                 GuideItem(
                     icon = "🎯",
-                    title = "Terjemahkan Dialog",
-                    desc = "Ketuk gelembung melayang 1x saat teks dialog dalam game muncul."
+                    title = "Nimpa Teks Game Langsung",
+                    desc = "Ketuk gelembung 1x ➔ Teks terjemahan langsung menimpa kotak dialog game di layar!"
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                GuideItem(
+                    icon = "👆",
+                    title = "Tutup Terjemahan",
+                    desc = "Cukup ketuk layar di mana saja untuk menghilangkan teks terjemahan dan lanjut bermain."
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 GuideItem(
@@ -626,19 +730,13 @@ fun MainScreen(
                 GuideItem(
                     icon = "🗑️",
                     title = "Tutup Cepat (Drag-to-Delete)",
-                    desc = "Tarik gelembung ke ikon sampah merah di bawah layar untuk menutup."
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                GuideItem(
-                    icon = "🔠",
-                    title = "Ukuran Font HUD Subtitle",
-                    desc = "Klik ikon 'A' di kotak terjemahan untuk memperbesar font (Normal/Besar/Ekstra)."
+                    desc = "Tarik gelembung ke ikon sampah merah di bawah layar untuk menutup layanan."
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 GuideItem(
                     icon = "🔊",
                     title = "Fitur Suara & Salin",
-                    desc = "Tersedia tombol speaker (TTS) untuk bersuara dan tombol copy untuk menyalin teks."
+                    desc = "Tersedia tombol suara (TTS) Bahasa Indonesia dan sentuh-tahan teks untuk menyalin."
                 )
             }
         }

@@ -6,7 +6,11 @@ import com.google.gson.JsonParser
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.TranslatorOptions
+import com.gametrans.app.ocr.GameTextBlock
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -26,6 +30,30 @@ class TranslationManager(context: Context) {
     private val tagPattern = Pattern.compile(
         "(\\\\[A-Za-z]+\\[\\d+\\]|\\{[^\\}]+\\}|\\[[A-Za-z0-9_]+\\]|%[0-9]*\\.?[0-9]*[sdif]|<[^>]+>|\\\\n|\\\\t)"
     )
+
+    suspend fun translateBlocks(
+        blocks: List<GameTextBlock>,
+        sourceLang: String = "ja",
+        targetLang: String = "id"
+    ): List<Pair<GameTextBlock, String>> = withContext(Dispatchers.IO) {
+        if (blocks.isEmpty()) return@withContext emptyList()
+
+        val validBlocks = blocks.filter {
+            it.text.isNotBlank() &&
+            it.boundingBox != null &&
+            it.boundingBox.width() > 10 &&
+            it.boundingBox.height() > 8
+        }
+
+        coroutineScope {
+            validBlocks.map { block ->
+                async {
+                    val translated = translate(block.text, sourceLang, targetLang)
+                    Pair(block, translated)
+                }
+            }.awaitAll()
+        }
+    }
 
     suspend fun translate(
         text: String,

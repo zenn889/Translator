@@ -22,10 +22,13 @@ android {
 
     signingConfigs {
         create("appKey") {
-            storeFile = file("${rootDir}/keystore/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            val keyFile = file("${rootDir}/keystore/debug.keystore")
+            if (keyFile.exists()) {
+                storeFile = keyFile
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
     }
 

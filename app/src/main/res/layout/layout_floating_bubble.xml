@@ -3,34 +3,66 @@
     android:id="@+id/bubbleRoot"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:padding="8dp">
+    android:padding="8dp"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
-    <!-- Draggable Floating Bubble Icon -->
-    <ImageView
-        android:id="@+id/bubbleIcon"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:background="@drawable/bg_bubble"
-        android:padding="12dp"
-        android:src="@drawable/ic_translate_bubble"
-        android:contentDescription="@string/tap_to_translate"
-        android:elevation="8dp" />
+    <!-- Glowing Cyber Orb Container -->
+    <FrameLayout
+        android:id="@+id/bubbleContainer"
+        android:layout_width="62dp"
+        android:layout_height="62dp"
+        android:background="@drawable/bg_bubble_modern"
+        android:elevation="12dp">
 
-    <!-- Mini Indicator Badge -->
+        <!-- Center Translate Icon -->
+        <ImageView
+            android:id="@+id/bubbleIcon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="13dp"
+            android:src="@drawable/ic_translate_bubble"
+            android:contentDescription="@string/tap_to_translate" />
+
+        <!-- Loading Spinner (Indeterminate pulse when OCR/translating) -->
+        <ProgressBar
+            android:id="@+id/bubbleLoading"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_gravity="center"
+            android:indeterminateTint="#fde047"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <!-- Language Badge (Rounded pill) -->
     <TextView
         android:id="@+id/badgeLang"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:background="#10b981"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
-        android:paddingTop="1dp"
-        android:paddingBottom="1dp"
+        android:layout_marginEnd="0dp"
+        android:layout_marginBottom="0dp"
+        android:background="@drawable/bg_badge_lang"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
         android:text="ID"
-        android:textColor="#000"
+        android:textColor="#ffffff"
         android:textSize="9sp"
         android:textStyle="bold"
-        android:elevation="10dp" />
+        android:elevation="14dp" />
+
+    <!-- Pulse Online Status Dot -->
+    <View
+        android:id="@+id/statusDot"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="2dp"
+        android:background="@drawable/bg_status_online"
+        android:elevation="14dp" />
 
 </FrameLayout>

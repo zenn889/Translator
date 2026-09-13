@@ -11,8 +11,8 @@ android {
         applicationId = "com.gametrans.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -20,10 +20,10 @@ android {
         }
     }
 
-    val keyFile = file("${rootDir}/keystore/debug.keystore")
+    val keyFile = file("${rootDir}/gametrans.jks")
     if (keyFile.exists()) {
         signingConfigs {
-            create("appKey") {
+            create("releaseKey") {
                 storeFile = keyFile
                 storePassword = "android"
                 keyAlias = "androiddebugkey"
@@ -35,13 +35,14 @@ android {
     buildTypes {
         debug {
             if (keyFile.exists()) {
-                signingConfig = signingConfigs.getByName("appKey")
+                signingConfig = signingConfigs.getByName("releaseKey")
             }
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             if (keyFile.exists()) {
-                signingConfig = signingConfigs.getByName("appKey")
+                signingConfig = signingConfigs.getByName("releaseKey")
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -49,6 +50,16 @@ android {
             )
         }
     }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8

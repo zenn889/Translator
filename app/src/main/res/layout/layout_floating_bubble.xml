@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bubbleRoot"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:padding="8dp">
+
+    <!-- Draggable Floating Bubble Icon -->
+    <ImageView
+        android:id="@+id/bubbleIcon"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/bg_bubble"
+        android:padding="12dp"
+        android:src="@drawable/ic_translate_bubble"
+        android:contentDescription="@string/tap_to_translate"
+        android:elevation="8dp" />
+
+    <!-- Mini Indicator Badge -->
+    <TextView
+        android:id="@+id/badgeLang"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:background="#10b981"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingTop="1dp"
+        android:paddingBottom="1dp"
+        android:text="ID"
+        android:textColor="#000"
+        android:textSize="9sp"
+        android:textStyle="bold"
+        android:elevation="10dp" />
+
+</FrameLayout>

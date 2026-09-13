@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">GameTrans</string>
+    <string name="app_tagline">Penerjemah Layar Game Android Real-time</string>
+    <string name="start_service">Mulai Layanan Gelembung Melayang</string>
+    <string name="stop_service">Hentikan Layanan</string>
+    <string name="permission_overlay_title">Izin Menampilkan di Atas Aplikasi Lain</string>
+    <string name="permission_overlay_desc">Diperlukan agar tombol melayang dapat tampil di atas game yang sedang dimainkan.</string>
+    <string name="grant_permission">Beri Izin</string>
+    <string name="permission_granted">Izin Diberikan</string>
+    <string name="source_language">Bahasa Game</string>
+    <string name="target_language">Bahasa Terjemahan</string>
+    <string name="tap_to_translate">Ketuk gelembung untuk menerjemahkan</string>
+    <string name="translating">Sedang menerjemahkan dialog...</string>
+    <string name="no_text_found">Tidak ditemukan teks dialog di layar.</string>
+    <string name="copy_text">Salin Terjemahan</string>
+    <string name="copied_to_clipboard">Teks berhasil disalin ke clipboard!</string>
+    <string name="close">Tutup</string>
+    <string name="notification_channel_name">Layanan Penerjemah Game</string>
+    <string name="notification_title">GameTrans Berjalan di Latar Belakang</string>
+    <string name="notification_text">Ketuk gelembung melayang di tepi layar untuk menerjemahkan game Anda.</string>
+</resources>

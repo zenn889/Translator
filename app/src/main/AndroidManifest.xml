@@ -25,6 +25,11 @@
         android:theme="@style/Theme.GameTrans"
         tools:targetApi="34">
 
+        <!-- Pre-download ML Kit OCR model on installation -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr" />
+
         <!-- Main Configuration Activity -->
         <activity
             android:name=".MainActivity"

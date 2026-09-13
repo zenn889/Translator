@@ -10,6 +10,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
@@ -75,18 +76,37 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
         screenCaptureManager = ScreenCaptureManager(this)
         ocrManager = GameOcrManager()
         translationManager = TranslationManager(this)
-        tts = TextToSpeech(this, this)
+        try {
+            tts = TextToSpeech(this, this)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = createNotification()
-        startForeground(NOTIFICATION_ID, notification)
+
+        // Required for Android 10+ and Android 14+ MediaProjection
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
 
         intent?.let {
             val resultCode = it.getIntExtra(EXTRA_RESULT_CODE, 0)
-            val resultData = it.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
+            val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                it.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                it.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
+            }
             sourceLang = it.getStringExtra(EXTRA_SOURCE_LANG) ?: "ja"
             targetLang = it.getStringExtra(EXTRA_TARGET_LANG) ?: "id"
 
@@ -135,71 +155,79 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
 
     @SuppressLint("ClickableViewAccessibility", "InflateParams")
     private fun initFloatingBubble() {
-        bubbleView = LayoutInflater.from(this).inflate(R.layout.layout_floating_bubble, null)
+        try {
+            bubbleView = LayoutInflater.from(this).inflate(R.layout.layout_floating_bubble, null)
 
-        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            @Suppress("DEPRECATION")
-            WindowManager.LayoutParams.TYPE_PHONE
-        }
-
-        bubbleParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            layoutFlag,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = 20
-            y = 300
-        }
-
-        val badgeLang = bubbleView?.findViewById<TextView>(R.id.badgeLang)
-        badgeLang?.text = targetLang.uppercase()
-
-        // Draggable bubble logic
-        bubbleView?.setOnTouchListener(object : View.OnTouchListener {
-            private var initialX = 0
-            private var initialY = 0
-            private var initialTouchX = 0f
-            private var initialTouchY = 0f
-            private var isMoved = false
-
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        initialX = bubbleParams.x
-                        initialY = bubbleParams.y
-                        initialTouchX = event.rawX
-                        initialTouchY = event.rawY
-                        isMoved = false
-                        return true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        val dx = (event.rawX - initialTouchX).toInt()
-                        val dy = (event.rawY - initialTouchY).toInt()
-                        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                            isMoved = true
-                        }
-                        bubbleParams.x = initialX + dx
-                        bubbleParams.y = initialY + dy
-                        windowManager.updateViewLayout(bubbleView, bubbleParams)
-                        return true
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        if (!isMoved) {
-                            onBubbleTapped()
-                        }
-                        return true
-                    }
-                }
-                return false
+            val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
             }
-        })
 
-        windowManager.addView(bubbleView, bubbleParams)
+            bubbleParams = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                layoutFlag,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                x = 20
+                y = 300
+            }
+
+            val badgeLang = bubbleView?.findViewById<TextView>(R.id.badgeLang)
+            badgeLang?.text = targetLang.uppercase()
+
+            bubbleView?.setOnTouchListener(object : View.OnTouchListener {
+                private var initialX = 0
+                private var initialY = 0
+                private var initialTouchX = 0f
+                private var initialTouchY = 0f
+                private var isMoved = false
+
+                override fun onTouch(v: View, event: MotionEvent): Boolean {
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            initialX = bubbleParams.x
+                            initialY = bubbleParams.y
+                            initialTouchX = event.rawX
+                            initialTouchY = event.rawY
+                            isMoved = false
+                            return true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            val dx = (event.rawX - initialTouchX).toInt()
+                            val dy = (event.rawY - initialTouchY).toInt()
+                            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                                isMoved = true
+                            }
+                            bubbleParams.x = initialX + dx
+                            bubbleParams.y = initialY + dy
+                            try {
+                                windowManager.updateViewLayout(bubbleView, bubbleParams)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                            return true
+                        }
+                        MotionEvent.ACTION_UP -> {
+                            if (!isMoved) {
+                                onBubbleTapped()
+                            }
+                            return true
+                        }
+                    }
+                    return false
+                }
+            })
+
+            windowManager.addView(bubbleView, bubbleParams)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Izin overlay belum aktif: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun onBubbleTapped() {
@@ -219,7 +247,7 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
                 bubbleView?.visibility = View.VISIBLE
 
                 if (bitmap == null) {
-                    Toast.makeText(this@FloatingBubbleService, "Gagal menangkap layar game", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FloatingBubbleService, "Menunggu frame layar game...", Toast.LENGTH_SHORT).show()
                     isTranslating = false
                     return@launch
                 }
@@ -246,7 +274,8 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
                 showTranslationDialog(ocrResult.fullText, translated)
 
             } catch (e: Exception) {
-                Toast.makeText(this@FloatingBubbleService, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+                Toast.makeText(this@FloatingBubbleService, "Gagal menerjemahkan: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
                 isTranslating = false
             }
@@ -255,7 +284,15 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
 
     @SuppressLint("InflateParams")
     private fun showTranslationDialog(originalText: String, translatedText: String) {
-        if (dialogView == null) {
+        try {
+            if (dialogView != null && dialogView?.isAttachedToWindow == true) {
+                dialogView?.findViewById<TextView>(R.id.tvOriginal)?.text = originalText
+                dialogView?.findViewById<TextView>(R.id.tvTranslated)?.text = translatedText
+                return
+            }
+
+            dismissTranslationDialog()
+
             dialogView = LayoutInflater.from(this).inflate(R.layout.layout_translation_dialog, null)
 
             val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -275,6 +312,9 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
                 gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
                 y = 120
             }
+
+            dialogView?.findViewById<TextView>(R.id.tvOriginal)?.text = originalText
+            dialogView?.findViewById<TextView>(R.id.tvTranslated)?.text = translatedText
 
             // Close button
             dialogView?.findViewById<ImageButton>(R.id.btnClose)?.setOnClickListener {
@@ -296,28 +336,39 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
                 val tvTrans = dialogView?.findViewById<TextView>(R.id.tvTranslated)
                 val textToSpeak = tvTrans?.text?.toString() ?: ""
                 if (textToSpeak.isNotBlank()) {
-                    tts?.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "GameTransTTS")
+                    try {
+                        tts?.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "GameTransTTS")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             }
 
             windowManager.addView(dialogView, dialogParams)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-
-        // Update texts
-        dialogView?.findViewById<TextView>(R.id.tvOriginal)?.text = originalText
-        dialogView?.findViewById<TextView>(R.id.tvTranslated)?.text = translatedText
     }
 
     private fun dismissTranslationDialog() {
-        if (dialogView != null) {
-            windowManager.removeView(dialogView)
+        try {
+            if (dialogView != null && dialogView?.isAttachedToWindow == true) {
+                windowManager.removeView(dialogView)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
             dialogView = null
         }
     }
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            tts?.language = Locale("id", "ID")
+            try {
+                tts?.language = Locale("id", "ID")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -325,12 +376,21 @@ class FloatingBubbleService : Service(), TextToSpeech.OnInitListener {
         super.onDestroy()
         serviceScope.cancel()
         dismissTranslationDialog()
-        if (bubbleView != null) {
-            windowManager.removeView(bubbleView)
+        try {
+            if (bubbleView != null && bubbleView?.isAttachedToWindow == true) {
+                windowManager.removeView(bubbleView)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
             bubbleView = null
         }
         screenCaptureManager.release()
-        tts?.stop()
-        tts?.shutdown()
+        try {
+            tts?.stop()
+            tts?.shutdown()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }
